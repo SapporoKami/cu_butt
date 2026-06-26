@@ -13,9 +13,9 @@
   </PropertyGroup>
 
   <!-- Buttplug packages: these ARE copied to output (must ship with the mod) -->
+  <!-- WebSocket connector is built into the base package since v3.1 -->
   <ItemGroup>
-    <PackageReference Include="Buttplug" Version="3.0.1" />
-    <PackageReference Include="Buttplug.Client.Connectors.WebsocketConnector" Version="3.0.1" />
+    <PackageReference Include="Buttplug" Version="5.0.1" />
   </ItemGroup>
 
   <!-- Game / BepInEx DLLs: NOT copied to output (already in the game) -->

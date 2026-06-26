@@ -1,6 +1,9 @@
 using BepInEx;
 using BepInEx.Logging;
 using ScavLib.command;
+using ScavLib.event_bus;
+using ScavLib.event_bus.events;
+using ScavLib.util;
 
 namespace ScavButt;
 
@@ -14,6 +17,9 @@ public class Plugin : BaseUnityPlugin
 
     internal static ManualLogSource Log = null!;
 
+    private bool _worldLoaded = false;
+    private float _lastShock = 0f;
+
     private void Awake()
     {
         Log = Logger;
@@ -21,8 +27,41 @@ public class Plugin : BaseUnityPlugin
         if (!CommandRegistry.TryRegister(new ButtCommand(), PluginName, out var error))
             Log.LogError($"[ScavButt] Failed to register 'butt' command: {error}");
 
+        ButtplugManager.StartConnectionLoop();
+        EventBus.Register(this);
+
         Log.LogInfo($"{PluginName} {PluginVersion} loaded.");
-        // TODO: start Buttplug connection loop
-        // TODO: register WorldLoadedEvent listener for damage watcher
+    }
+
+    [Subscribe]
+    private void OnWorldLoaded(WorldLoadedEvent e)
+    {
+        _lastShock = PlayerUtil.GetShock();
+        _worldLoaded = true;
+    }
+
+    [Subscribe]
+    private void OnWorldUnloading(WorldUnloadingEvent e)
+    {
+        _worldLoaded = false;
+        ButtplugManager.StopAll();
+    }
+
+    private void Update()
+    {
+        if (!_worldLoaded) return;
+
+        float shock = PlayerUtil.GetShock();
+        float delta = shock - _lastShock;
+        _lastShock = shock;
+
+        if (delta > 1f)
+            ButtplugManager.Vibrate(0.01, durationMs: 300);
+    }
+
+    private void OnDestroy()
+    {
+        EventBus.Unregister(this);
+        ButtplugManager.StopConnectionLoop();
     }
 }

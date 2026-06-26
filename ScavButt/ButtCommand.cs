@@ -1,25 +1,30 @@
+using Buttplug.Core.Messages;
 using ScavLib.command;
 using ScavLib.util;
+using System.Collections.Generic;
 
 namespace ScavButt;
 
 public class ButtCommand : BaseCommand
 {
     public override string Name => "butt";
-    public override string Description => "ScavButt — buttplug.io integration. Usage: butt <status>";
+    public override string Description => "ScavButt — buttplug.io integration. Usage: butt <connect|disconnect|scan|stopscan|devices|stop|status>";
 
     public override void Execute(string[] args)
     {
-        // args[0] is "butt", real subcommand is args[1]
         string sub = args.Length > 1 ? args[1].ToLowerInvariant() : "status";
 
         switch (sub)
         {
-            case "status":
-                ExecuteStatus();
-                break;
+            case "status":     ExecuteStatus();     break;
+            case "connect":    ExecuteConnect();    break;
+            case "disconnect": ExecuteDisconnect(); break;
+            case "scan":       ExecuteScan();       break;
+            case "stopscan":   ExecuteStopScan();   break;
+            case "devices":    ExecuteDevices();    break;
+            case "stop":       ExecuteStop();       break;
             default:
-                GameUtil.Log($"[ScavButt] Unknown subcommand '{args[1]}'. Usage: butt status");
+                GameUtil.Log($"[ScavButt] Unknown subcommand '{args[1]}'. Commands: connect, disconnect, scan, stopscan, devices, stop, status");
                 break;
         }
     }
@@ -27,9 +32,68 @@ public class ButtCommand : BaseCommand
     private static void ExecuteStatus()
     {
         GameUtil.Log("[ScavButt] === ScavButt Status ===");
-        GameUtil.Log($"[ScavButt] Version : {Plugin.PluginVersion}");
-        // TODO: replace placeholders once ButtplugManager is implemented
-        GameUtil.Log("[ScavButt] Intiface : not yet implemented");
-        GameUtil.Log("[ScavButt] Devices  : not yet implemented");
+        GameUtil.Log($"[ScavButt] Version  : {Plugin.PluginVersion}");
+        GameUtil.Log($"[ScavButt] Intiface : {(ButtplugManager.IsConnected ? "connected" : "disconnected")}");
+        GameUtil.Log($"[ScavButt] Devices  : {ButtplugManager.Devices.Length}");
+    }
+
+    private static void ExecuteConnect()
+    {
+        GameUtil.Log("[ScavButt] (Re)connecting to Intiface Central...");
+        ButtplugManager.Connect();
+    }
+
+    private static void ExecuteDisconnect()
+    {
+        GameUtil.Log("[ScavButt] Disconnecting from Intiface Central.");
+        ButtplugManager.Disconnect();
+    }
+
+    private static void ExecuteScan()
+    {
+        if (!ButtplugManager.IsConnected) { GameUtil.Log("[ScavButt] Not connected."); return; }
+        GameUtil.Log("[ScavButt] Scanning for devices...");
+        ButtplugManager.StartScanning();
+    }
+
+    private static void ExecuteStopScan()
+    {
+        if (!ButtplugManager.IsConnected) { GameUtil.Log("[ScavButt] Not connected."); return; }
+        GameUtil.Log("[ScavButt] Stopping scan.");
+        ButtplugManager.StopScanning();
+    }
+
+    private static void ExecuteDevices()
+    {
+        var devices = ButtplugManager.Devices;
+        if (devices.Length == 0) { GameUtil.Log("[ScavButt] No devices connected."); return; }
+
+        GameUtil.Log($"[ScavButt] {devices.Length} device(s):");
+        foreach (var device in devices)
+        {
+            var outputs = new List<string>();
+            if (device.HasOutput(OutputType.Vibrate))   outputs.Add("Vibrate");
+            if (device.HasOutput(OutputType.Rotate))    outputs.Add("Rotate");
+            if (device.HasOutput(OutputType.Oscillate)) outputs.Add("Oscillate");
+            if (device.HasOutput(OutputType.Position))  outputs.Add("Position");
+            if (device.HasOutput(OutputType.Constrict)) outputs.Add("Constrict");
+
+            var inputs = new List<string>();
+            if (device.HasInput(InputType.Battery))  inputs.Add("Battery");
+            if (device.HasInput(InputType.Button))   inputs.Add("Button");
+            if (device.HasInput(InputType.Pressure)) inputs.Add("Pressure");
+            if (device.HasInput(InputType.RSSI))     inputs.Add("RSSI");
+
+            GameUtil.Log($"[ScavButt]   {device.Name}");
+            if (outputs.Count > 0) GameUtil.Log($"[ScavButt]     Outputs: {string.Join(", ", outputs)}");
+            if (inputs.Count  > 0) GameUtil.Log($"[ScavButt]     Inputs:  {string.Join(", ", inputs)}");
+        }
+    }
+
+    private static void ExecuteStop()
+    {
+        if (!ButtplugManager.IsConnected) { GameUtil.Log("[ScavButt] Not connected."); return; }
+        GameUtil.Log("[ScavButt] Stopping all devices.");
+        ButtplugManager.StopAll();
     }
 }
