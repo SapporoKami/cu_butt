@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>ScavButt</AssemblyName>
+    <RootNamespace>ScavButt</RootNamespace>
+    <Version>0.1.0</Version>
+    <!-- Output directly to game plugins folder for easy testing -->
+    <OutputPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/BepInEx/plugins/ScavButt</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <!-- Buttplug packages: these ARE copied to output (must ship with the mod) -->
+  <ItemGroup>
+    <PackageReference Include="Buttplug" Version="3.0.1" />
+    <PackageReference Include="Buttplug.Client.Connectors.WebsocketConnector" Version="3.0.1" />
+  </ItemGroup>
+
+  <!-- Game / BepInEx DLLs: NOT copied to output (already in the game) -->
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/BepInEx/core/BepInEx.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/BepInEx/core/0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- ScavLib API.dll must be downloaded from:                            -->
+    <!-- https://github.com/Kanisuko/ScavLib-API-DLL-Repository/releases     -->
+    <!-- and placed at BepInEx/plugins/ScavLib API.dll                       -->
+    <Reference Include="ScavLib API">
+      <HintPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/BepInEx/plugins/ScavLib API.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/CasualtiesUnknown_Data/Managed/Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/CasualtiesUnknown_Data/Managed/UnityEngine.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/CasualtiesUnknown_Data/Managed/UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
