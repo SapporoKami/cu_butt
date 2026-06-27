@@ -12,10 +12,8 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 
-  <!-- Buttplug packages: these ARE copied to output (must ship with the mod) -->
-  <!-- WebSocket connector is built into the base package since v3.1 -->
   <ItemGroup>
-    <PackageReference Include="Buttplug" Version="5.0.1" />
+    <PackageReference Include="Buttplug" Version="4.0.0" />
   </ItemGroup>
 
   <!-- Game / BepInEx DLLs: NOT copied to output (already in the game) -->

@@ -1,4 +1,3 @@
-using Buttplug.Core.Messages;
 using ScavLib.command;
 using ScavLib.util;
 using System.Collections.Generic;
@@ -8,7 +7,7 @@ namespace ScavButt;
 public class ButtCommand : BaseCommand
 {
     public override string Name => "butt";
-    public override string Description => "ScavButt — buttplug.io integration. Usage: butt <connect|disconnect|scan|stopscan|devices|stop|status>";
+    public override string Description => "ScavButt — buttplug.io integration. Usage: butt <connect|disconnect|scan|stopscan|devices|stop|test|status>";
 
     public override void Execute(string[] args)
     {
@@ -23,6 +22,7 @@ public class ButtCommand : BaseCommand
             case "stopscan":   ExecuteStopScan();   break;
             case "devices":    ExecuteDevices();    break;
             case "stop":       ExecuteStop();       break;
+            case "test":       ExecuteTest();       break;
             default:
                 GameUtil.Log($"[ScavButt] Unknown subcommand '{args[1]}'. Commands: connect, disconnect, scan, stopscan, devices, stop, status");
                 break;
@@ -72,22 +72,25 @@ public class ButtCommand : BaseCommand
         foreach (var device in devices)
         {
             var outputs = new List<string>();
-            if (device.HasOutput(OutputType.Vibrate))   outputs.Add("Vibrate");
-            if (device.HasOutput(OutputType.Rotate))    outputs.Add("Rotate");
-            if (device.HasOutput(OutputType.Oscillate)) outputs.Add("Oscillate");
-            if (device.HasOutput(OutputType.Position))  outputs.Add("Position");
-            if (device.HasOutput(OutputType.Constrict)) outputs.Add("Constrict");
+            if (device.VibrateAttributes.Count > 0)   outputs.Add("Vibrate");
+            if (device.RotateAttributes.Count > 0)    outputs.Add("Rotate");
+            if (device.OscillateAttributes.Count > 0) outputs.Add("Oscillate");
+            if (device.LinearAttributes.Count > 0)    outputs.Add("Linear");
 
             var inputs = new List<string>();
-            if (device.HasInput(InputType.Battery))  inputs.Add("Battery");
-            if (device.HasInput(InputType.Button))   inputs.Add("Button");
-            if (device.HasInput(InputType.Pressure)) inputs.Add("Pressure");
-            if (device.HasInput(InputType.RSSI))     inputs.Add("RSSI");
+            if (device.HasBattery) inputs.Add("Battery");
 
             GameUtil.Log($"[ScavButt]   {device.Name}");
             if (outputs.Count > 0) GameUtil.Log($"[ScavButt]     Outputs: {string.Join(", ", outputs)}");
             if (inputs.Count  > 0) GameUtil.Log($"[ScavButt]     Inputs:  {string.Join(", ", inputs)}");
         }
+    }
+
+    private static void ExecuteTest()
+    {
+        if (!ButtplugManager.IsConnected) { GameUtil.Log("[ScavButt] Not connected."); return; }
+        GameUtil.Log("[ScavButt] Test vibration.");
+        ButtplugManager.Vibrate(0.01, durationMs: 300);
     }
 
     private static void ExecuteStop()
