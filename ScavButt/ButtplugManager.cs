@@ -15,7 +15,7 @@ internal static class ButtplugManager
     internal static bool IsConnected => _client.Connected;
     internal static ButtplugClientDevice[] Devices => _client.Devices;
 
-    internal static void StartConnectionLoop()
+    internal static void Initialize()
     {
         _client.DeviceAdded += (_, args) =>
         {
@@ -44,7 +44,7 @@ internal static class ButtplugManager
             GameUtil.Log(msg);
         };
 
-        RunLoop(_cts.Token);
+        Plugin.Log.LogInfo($"[ScavButt] Ready. Run 'butt connect' to connect to {DefaultAddress}.");
     }
 
     private static void RunLoop(CancellationToken token)
@@ -60,6 +60,8 @@ internal static class ButtplugManager
                     try
                     {
                         await _client.ConnectAsync(new ButtplugWebsocketConnector(new Uri(DefaultAddress)), token);
+                        // stop any motors left running from a previous session
+                        try { await _client.StopAllDevicesAsync(); } catch { }
                         var msg = $"[ScavButt] Connected to Intiface. {_client.Devices.Length} device(s) available.";
                         Plugin.Log.LogInfo(msg);
                         GameUtil.Log(msg);
@@ -163,7 +165,8 @@ internal static class ButtplugManager
     internal static void Vibrate(double intensity, int durationMs = 0)
     {
         if (!_client.Connected) return;
-        intensity = Math.Max(0.0, Math.Min(1.0, intensity));
+        intensity = Math.Max(0.0, Math.Min(1.0, intensity))
+                  * Math.Max(0.0, Math.Min(100.0, VibrationSettings.MaxDeviceIntensity)) / 100.0;
 
         Task.Run(async () =>
         {

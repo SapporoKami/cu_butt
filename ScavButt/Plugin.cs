@@ -25,7 +25,7 @@ public class Plugin : BaseUnityPlugin
         if (!CommandRegistry.TryRegister(new ButtCommand(), PluginName, out var error))
             Log.LogError($"[ScavButt] Failed to register 'butt' command: {error}");
 
-        ButtplugManager.StartConnectionLoop();
+        ButtplugManager.Initialize();
         EventBus.Register(this);
 
         Log.LogInfo($"{PluginName} {PluginVersion} loaded.");
