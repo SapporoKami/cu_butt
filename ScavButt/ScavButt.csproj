@@ -7,48 +7,74 @@
     <AssemblyName>ScavButt</AssemblyName>
     <RootNamespace>ScavButt</RootNamespace>
     <Version>0.1.0</Version>
+    <GamePath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo</GamePath>
     <!-- Output directly to game plugins folder for easy testing -->
-    <OutputPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/BepInEx/plugins/ScavButt</OutputPath>
+    <OutputPath>$(GamePath)/BepInEx/plugins/ScavButt</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Buttplug" Version="4.0.0" />
+    <!-- Build-only: merges Buttplug deps into ScavButt.dll at post-build -->
+    <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.34.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <!-- Game / BepInEx DLLs: NOT copied to output (already in the game) -->
   <ItemGroup>
     <Reference Include="BepInEx">
-      <HintPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/BepInEx/core/BepInEx.dll</HintPath>
+      <HintPath>$(GamePath)/BepInEx/core/BepInEx.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="0Harmony">
-      <HintPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/BepInEx/core/0Harmony.dll</HintPath>
+      <HintPath>$(GamePath)/BepInEx/core/0Harmony.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <!-- ScavLib API.dll must be downloaded from:                            -->
     <!-- https://github.com/Kanisuko/ScavLib-API-DLL-Repository/releases     -->
     <!-- and placed at BepInEx/plugins/ScavLib API.dll                       -->
     <Reference Include="ScavLib API">
-      <HintPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/BepInEx/plugins/ScavLib API.dll</HintPath>
+      <HintPath>$(GamePath)/BepInEx/plugins/ScavLib API.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/CasualtiesUnknown_Data/Managed/Assembly-CSharp.dll</HintPath>
+      <HintPath>$(GamePath)/CasualtiesUnknown_Data/Managed/Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/CasualtiesUnknown_Data/Managed/UnityEngine.dll</HintPath>
+      <HintPath>$(GamePath)/CasualtiesUnknown_Data/Managed/UnityEngine.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/CasualtiesUnknown_Data/Managed/UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>$(GamePath)/CasualtiesUnknown_Data/Managed/UnityEngine.CoreModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.IMGUIModule">
-      <HintPath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo/CasualtiesUnknown_Data/Managed/UnityEngine.IMGUIModule.dll</HintPath>
+      <HintPath>$(GamePath)/CasualtiesUnknown_Data/Managed/UnityEngine.IMGUIModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
+
+  <!-- Merge all Buttplug dependency DLLs into ScavButt.dll after build -->
+  <Target Name="ILRepacker" AfterTargets="Build">
+    <ItemGroup>
+      <ILRepackInput Include="$(OutputPath)/$(AssemblyName).dll" />
+      <ILRepackInput Include="$(OutputPath)/*.dll" Exclude="$(OutputPath)/$(AssemblyName).dll" />
+    </ItemGroup>
+    <ILRepack
+      Parallel="true"
+      Internalize="true"
+      InputAssemblies="@(ILRepackInput)"
+      TargetKind="Dll"
+      OutputFile="$(OutputPath)/$(AssemblyName).dll"
+      LibraryPath="$(OutputPath);$(GamePath)/BepInEx/core;$(GamePath)/BepInEx/plugins;$(GamePath)/CasualtiesUnknown_Data/Managed"
+    />
+    <ItemGroup>
+      <ILRepackSideFiles Include="$(OutputPath)/*.dll" Exclude="$(OutputPath)/$(AssemblyName).dll" />
+    </ItemGroup>
+    <Delete Files="@(ILRepackSideFiles)" />
+  </Target>
 
 </Project>
