@@ -1,5 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    Copy GamePath.props.example → GamePath.props and set your game path there.
+    GamePath.props is gitignored so it stays local to your machine.
+    You can also pass it on the command line: dotnet build -p:GamePath="..."
+  -->
+  <Import Project="GamePath.props" Condition="Exists('GamePath.props')" />
+
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <LangVersion>latest</LangVersion>
@@ -7,9 +14,9 @@
     <AssemblyName>ScavButt</AssemblyName>
     <RootNamespace>ScavButt</RootNamespace>
     <Version>0.1.0</Version>
-    <GamePath>/home/yair/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo</GamePath>
-    <!-- Output directly to game plugins folder for easy testing -->
-    <OutputPath>$(GamePath)/BepInEx/plugins/ScavButt</OutputPath>
+    <!-- Fallback if GamePath.props is absent (Windows Steam default) -->
+    <GamePath Condition="'$(GamePath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Casualties Unknown Demo</GamePath>
+    <OutputPath>$(MSBuildThisFileDirectory)bin\$(Configuration)\ScavButt</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 

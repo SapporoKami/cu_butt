@@ -110,3 +110,10 @@ InitTestScene*.unity*
 
 # extras
 /references
+
+# Local build config (contains machine-specific game path)
+ScavButt/GamePath.props
+
+# Shame additions
+.claude/
+.vscode/

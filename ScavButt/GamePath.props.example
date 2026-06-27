@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <!-- Set this to your Casualties Unknown Demo install directory -->
+    <!-- Windows Steam default: C:\Program Files (x86)\Steam\steamapps\common\Casualties Unknown Demo -->
+    <!-- Linux Steam example:   /home/yourname/Games/SteamLibrary/steamapps/common/Casualties Unknown Demo -->
+    <GamePath>C:\Program Files (x86)\Steam\steamapps\common\Casualties Unknown Demo</GamePath>
+  </PropertyGroup>
+</Project>
