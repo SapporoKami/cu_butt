@@ -38,6 +38,15 @@ public class ButtCommand : BaseCommand
         ("scale",          new Setting("global",     "Global waveform output scale 0.0–1.0 (pre-hardware)",
                                () => VibrationSettings.GlobalScale.ToString("F2"),
                                v  => VibrationSettings.GlobalScale = ParseFlt(v, 0, 1))),
+        ("poll-hz",        new Setting("global",     "Device command rate 1–60 Hz (real-time flush window; game-time sampling stays at 20 Hz)",
+                               () => VibrationSettings.PollHz.ToString("F1"),
+                               v  => VibrationSettings.PollHz = ParseFlt(v, 1, 60))),
+        ("ff-threshold",   new Setting("global",     "Time.timeScale above which fast-forward behaviour activates (default 1.5)",
+                               () => VibrationSettings.FastForwardThreshold.ToString("F2"),
+                               v  => VibrationSettings.FastForwardThreshold = ParseFlt(v, 1, 20))),
+        ("silence-ff",     new Setting("global",     "Silence vibrations entirely during fast-forward (true/false); false = dampened output instead",
+                               () => VibrationSettings.SilenceOnFastForward.ToString().ToLower(),
+                               v  => VibrationSettings.SilenceOnFastForward = ParseBool(v))),
 
         // ── effects ──────────────────────────────────────────────────────────
         ("heartbeat",      new Setting("effects",    "Heartbeat component on/off",
@@ -91,6 +100,9 @@ public class ButtCommand : BaseCommand
                                v  => VibrationSettings.BleedMaxAmp = ParseFlt(v, 0, 1))),
 
         // ── amplitudes ───────────────────────────────────────────────────────
+        ("pain-onset",     new Setting("amplitudes", "Raw pain value where vibration starts (0–80; PAIN_MILD=10, PAIN_MODERATE=30)",
+                               () => VibrationSettings.PainOnset.ToString("F1"),
+                               v  => VibrationSettings.PainOnset = ParseFlt(v, 0, 80))),
         ("amp-pain",       new Setting("amplitudes", "Pain/shock peak amplitude 0–1",
                                () => VibrationSettings.AmpPainShock.ToString("F2"),
                                v  => VibrationSettings.AmpPainShock = ParseFlt(v, 0, 1))),
@@ -258,9 +270,30 @@ public class ButtCommand : BaseCommand
     private class VizSub : BaseCommand
     {
         public override string Name => "viz";
-        public override string Description => "Toggle the wave visualizer overlay";
+        public override string Description => "Toggle the wave visualizer overlay  |  butt viz poll — toggle poll-window markers on the graph";
         public override void Execute(string[] args)
         {
+            if (args.Length >= 3 && args[2].ToLower() is "--help" or "help" or "?")
+            {
+                LogLine("[ScavButt] butt viz — wave visualizer overlay");
+                LogLine("[ScavButt]   butt viz           Toggle the oscilloscope overlay on/off");
+                LogLine("[ScavButt]   butt viz poll      Toggle green poll-window markers on the graph");
+                LogLine("[ScavButt]                        Each green line marks where a flush was sent to the device.");
+                LogLine("[ScavButt]                        Dense lines = normal speed; sparse lines = fast-forward batching.");
+                LogLine("[ScavButt]   butt viz --help    Show this help");
+                return;
+            }
+            if (args.Length >= 3 && args[2].ToLower() == "poll")
+            {
+                VibrationSystem.ShowPollMarkers = !VibrationSystem.ShowPollMarkers;
+                if (VibrationSystem.ShowPollMarkers && !VibrationSystem.ShowDebug)
+                {
+                    VibrationSystem.ShowDebug = true;
+                    LogLine("[ScavButt] Visualizer ON");
+                }
+                LogLine($"[ScavButt] Poll-window markers {(VibrationSystem.ShowPollMarkers ? "ON" : "OFF")}");
+                return;
+            }
             VibrationSystem.ShowDebug = !VibrationSystem.ShowDebug;
             LogLine($"[ScavButt] Visualizer {(VibrationSystem.ShowDebug ? "ON" : "OFF")}");
         }
@@ -278,6 +311,7 @@ public class ButtCommand : BaseCommand
             if (args.Length < 3) { PrintHelp(); return; }
 
             string key = args[2].ToLower();
+            if (key is "--help" or "help" or "?") { PrintHelp(); return; }
 
             if (args.Length < 4)
             {

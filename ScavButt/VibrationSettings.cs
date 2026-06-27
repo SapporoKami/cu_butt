@@ -21,6 +21,24 @@ public static class VibrationSettings
     /// directly to firmware over BLE, bypassing the Lovense app entirely.
     /// </summary>
     public static float MaxDeviceIntensity = 100f;
+    /// <summary>
+    /// How often a vibration command is sent to the device (Hz).
+    /// The system samples game state up to this rate on game time, then flushes
+    /// the mean of all samples collected in each window on real time.
+    /// Most devices are happy at 10–20 Hz; going above 20 rarely helps.
+    /// </summary>
+    public static float PollHz = 20f;
+    /// <summary>
+    /// Time.timeScale above which fast-forward behaviour activates.
+    /// Below this value vibrations play normally (or dampened via windowed mean).
+    /// </summary>
+    public static float FastForwardThreshold = 1.5f;
+    /// <summary>
+    /// When true, vibrations are silenced entirely while Time.timeScale exceeds
+    /// FastForwardThreshold. When false (default), the windowed-mean system still
+    /// sends dampened output so the player cannot skip to avoid sensation.
+    /// </summary>
+    public static bool SilenceOnFastForward = false;
 
     // ── Heartbeat ────────────────────────────────────────────────────────────
     public static bool  EnableHeartbeat     = true;
@@ -43,10 +61,10 @@ public static class VibrationSettings
     public static bool  EnableBleed      = true;
     /// <summary>Flat amplitude added per unit of internal bleeding (0–100 scale).</summary>
     public static float AmpInternalBleed = 0.20f;
-    /// <summary>Bleed speed at which vibration begins (default: BLEED_SPEED_CRITICAL — needs serious bleeding).</summary>
-    public static float BleedOnset;
-    /// <summary>Bleed speed at which vibration reaches BleedMaxAmp (default: 2.5× critical — extreme haemorrhage).</summary>
-    public static float BleedCeiling;
+    /// <summary>Bleed speed at which vibration begins.</summary>
+    public static float BleedOnset = 0.06f;
+    /// <summary>Bleed speed at which vibration reaches BleedMaxAmp.</summary>
+    public static float BleedCeiling = 1.5f;
     /// <summary>Maximum amplitude bleed can contribute on its own — keeps it from saturating the output alone.</summary>
     public static float BleedMaxAmp  = 0.65f;
     /// <summary>Pulse frequency (Hz) at BleedOnset — slow throb at the low end.</summary>
@@ -57,6 +75,8 @@ public static class VibrationSettings
     // ── Pain / Shock ─────────────────────────────────────────────────────────
     public static bool  EnablePainShock  = true;
     public static float AmpPainShock     = 0.50f;
+    /// <summary>Raw pain value at which vibration begins (0–80 scale; PAIN_MILD=10, PAIN_MODERATE=30).</summary>
+    public static float PainOnset        = 25f;
     public static float PainBuzzFreqMin  = 5f;
     public static float PainBuzzFreqMax  = 12f;
 
@@ -89,10 +109,4 @@ public static class VibrationSettings
     /// <summary>Trauma amount below which there is no vibration contribution.</summary>
     public static float TraumaFloor   = 40f;
 
-    // bleed thresholds depend on game constants — compute after static init
-    static VibrationSettings()
-    {
-        BleedOnset   = BLEED_SPEED_CRITICAL;           // need critical bleed to feel anything
-        BleedCeiling = BLEED_SPEED_CRITICAL * 2.5f;    // extreme haemorrhage to reach max amp
-    }
 }

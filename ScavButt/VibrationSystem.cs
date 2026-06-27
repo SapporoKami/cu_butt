@@ -9,15 +9,17 @@ namespace ScavButt;
 public class VibrationSystem : MonoBehaviour
 {
     private const float OPIATE_MAX = 80f;
-    private const float DT = 0.05f; // 20 Hz poll interval
+    private const float DT = 0.05f; // game-time sampling interval (fixed; not user-facing)
 
     // global timer used by all sine-based components
     private float _time;
 
     // debug overlay
     public static bool ShowDebug;
+    public static bool ShowPollMarkers;
     private const int RING_SIZE = 200; // 10 s at 20 Hz
-    private readonly float[] _ring = new float[RING_SIZE];
+    private readonly float[] _ring      = new float[RING_SIZE];
+    private readonly bool[]  _ringFlush = new bool[RING_SIZE];
     private int _ringHead;
     private float _dbgHeartbeat, _dbgBleed, _dbgPainShock, _dbgHorror,
                   _dbgFibrillation, _dbgImpact, _dbgTrauma, _dbgTotal;
@@ -31,7 +33,16 @@ public class VibrationSystem : MonoBehaviour
     private bool  _prevDismember;
 
     // player-presence tracking for main-menu guard
-    private bool _playerWasPresent;
+    private bool  _playerWasPresent;
+    private bool  _timescaleWasFast;
+
+    // windowed-mean accumulator — samples collected this real-time window
+    private float _accumSum;
+    private int   _accumCount;
+    private float _nextFlushTime;
+
+    // real elapsed time this tick — set once per game tick, used by all components
+    private float _dt;
 
     // heartbeat state
     private float _fibJitter;
@@ -66,32 +77,80 @@ public class VibrationSystem : MonoBehaviour
 
     private IEnumerator PollLoop()
     {
+        _nextFlushTime = Time.unscaledTime + 1f / VibrationSettings.PollHz;
         while (true)
         {
+            // Game-time wait — fires more often when Time.timeScale > 1, giving us
+            // more samples to average per real-time flush window.
             yield return new WaitForSeconds(DT);
-            // skip all computation when nothing needs it — saves CPU when idle
-            if (!ButtplugManager.IsConnected && !ShowDebug)
-                continue;
 
-            // skip when no player is actually in a run (main menu, loading screens, etc.)
-            // PlayerUtil returns false safe-defaults when no world is loaded
+            bool connected = ButtplugManager.IsConnected;
+
+            // skip all computation when nothing needs it — saves CPU when idle
+            if (!connected && !ShowDebug)
+            {
+                AdvanceFlush(reset: true);
+                continue;
+            }
+
+            // silence-on-fast-forward: stop devices once, skip until time normalises
+            bool fastTime = Time.timeScale > VibrationSettings.FastForwardThreshold;
+            if (fastTime && VibrationSettings.SilenceOnFastForward)
+            {
+                if (!_timescaleWasFast && connected)
+                    ButtplugManager.StopAll();
+                _timescaleWasFast = true;
+                AdvanceFlush(reset: true);
+                continue;
+            }
+            _timescaleWasFast = false;
+
+            // skip when no player is in a run (main menu, loading screens, etc.)
             bool playerPresent = PlayerUtil.IsAlive()
                               || PlayerUtil.IsDying()
                               || PlayerUtil.IsInCardiacArrest();
             if (!playerPresent)
             {
-                if (_playerWasPresent && ButtplugManager.IsConnected)
-                    ButtplugManager.StopAll(); // silence motors on the frame we lose the player
+                if (_playerWasPresent && connected)
+                    ButtplugManager.StopAll();
                 _playerWasPresent = false;
+                AdvanceFlush(reset: true);
                 continue;
             }
             _playerWasPresent = true;
 
-            _time += DT;
-            float output = ComputeOutput();
-            if (ButtplugManager.IsConnected)
-                ButtplugManager.Vibrate((double)output);
+            // advance oscillator clock and timers in real time so wave frequencies
+            // are independent of Time.timeScale
+            _dt    = Time.unscaledDeltaTime;
+            _time += _dt;
+
+            _accumSum += ComputeOutput();
+            _accumCount++;
+
+            // flush mean to device once per real-time window
+            if (Time.unscaledTime >= _nextFlushTime)
+            {
+                float mean = _accumCount > 0 ? _accumSum / _accumCount : 0f;
+                if (connected)
+                    ButtplugManager.Vibrate((double)mean);
+                _ringFlush[(_ringHead - 1 + RING_SIZE) % RING_SIZE] = true;
+                AdvanceFlush(reset: true);
+            }
         }
+    }
+
+    // Resets accumulators and advances the flush deadline.
+    // Called both on actual flushes and on skipped ticks so the deadline
+    // never drifts behind by multiple windows.
+    private void AdvanceFlush(bool reset)
+    {
+        if (reset)
+        {
+            _accumSum   = 0f;
+            _accumCount = 0;
+        }
+        if (Time.unscaledTime >= _nextFlushTime)
+            _nextFlushTime = Time.unscaledTime + 1f / VibrationSettings.PollHz;
     }
 
     private float ComputeOutput()
@@ -155,8 +214,9 @@ public class VibrationSystem : MonoBehaviour
         _dbgImpact       = impact;
         _dbgTrauma       = trauma;
         _dbgTotal        = final;
-        _ring[_ringHead] = final;
-        _ringHead        = (_ringHead + 1) % RING_SIZE;
+        _ringFlush[_ringHead] = false; // clear stale marker as ring slot is overwritten
+        _ring[_ringHead]      = final;
+        _ringHead             = (_ringHead + 1) % RING_SIZE;
         return final;
     }
 
@@ -196,7 +256,7 @@ public class VibrationSystem : MonoBehaviour
         float fibNorm = fibProg / 100f;
         if (fibNorm > 0f)
         {
-            _fibJitterTimer -= DT;
+            _fibJitterTimer -= _dt;
             if (_fibJitterTimer <= 0f)
             {
                 _fibJitter      = UnityEngine.Random.Range(-1f, 1f) * fibNorm * 0.12f;
@@ -241,7 +301,7 @@ public class VibrationSystem : MonoBehaviour
     {
         if (!VibrationSettings.EnablePainShock) return 0f;
 
-        float painNorm  = InvLerp(PAIN_MODERATE, PAIN_AGONY, PlayerUtil.GetAveragePain());
+        float painNorm  = InvLerp(VibrationSettings.PainOnset, PAIN_AGONY, PlayerUtil.GetAveragePain());
         float shockNorm = PlayerUtil.GetShock() / 100f;
         float amp       = Mathf.Max(painNorm, shockNorm) * VibrationSettings.AmpPainShock;
         if (amp <= 0f) return 0f;
@@ -262,7 +322,7 @@ public class VibrationSystem : MonoBehaviour
         if (amp <= 0f) return 0f;
 
         // random frequency walk
-        _horrorFreqTimer -= DT;
+        _horrorFreqTimer -= _dt;
         if (_horrorFreqTimer <= 0f)
         {
             _horrorFreqTarget = UnityEngine.Random.Range(VibrationSettings.HorrorFreqMin, VibrationSettings.HorrorFreqMax);
@@ -271,7 +331,7 @@ public class VibrationSystem : MonoBehaviour
         _horrorFreq = Mathf.Lerp(_horrorFreq, _horrorFreqTarget, 0.15f);
 
         // per-tick noise smoothed over ~100 ms
-        _horrorNoiseTimer -= DT;
+        _horrorNoiseTimer -= _dt;
         if (_horrorNoiseTimer <= 0f)
         {
             _horrorNoiseTarget = UnityEngine.Random.Range(0f, 1f);
@@ -294,7 +354,7 @@ public class VibrationSystem : MonoBehaviour
         if (amp <= 0f) return 0f;
 
         // random high-frequency bursts
-        _fibBurstTimer -= DT;
+        _fibBurstTimer -= _dt;
         if (_fibBurstTimer <= 0f)
         {
             _fibBurstFreq  = UnityEngine.Random.Range(VibrationSettings.FibFreqMin, VibrationSettings.FibFreqMax);
@@ -350,7 +410,7 @@ public class VibrationSystem : MonoBehaviour
         }
         else
         {
-            _impactTime += DT;
+            _impactTime += _dt;
         }
 
         _prevShock     = shock;
@@ -406,9 +466,12 @@ public class VibrationSystem : MonoBehaviour
         float slotW = GRAPH_W / RING_SIZE;
         for (int i = 0; i < RING_SIZE; i++)
         {
-            float val = _ring[(_ringHead + i) % RING_SIZE];
-            float bh  = val * GRAPH_H;
+            int   slot = (_ringHead + i) % RING_SIZE;
+            float val  = _ring[slot];
+            float bh   = val * GRAPH_H;
             DrawRect(new Rect(cx + i * slotW, cy + GRAPH_H - bh, slotW, bh), Color.white);
+            if (ShowPollMarkers && _ringFlush[slot])
+                DrawRect(new Rect(cx + i * slotW, cy, 1f, GRAPH_H), new Color(0.1f, 1f, 0.3f, 0.65f));
         }
         cy += GRAPH_H + 8f;
 
