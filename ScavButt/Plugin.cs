@@ -3,7 +3,6 @@ using BepInEx.Logging;
 using ScavLib.command;
 using ScavLib.event_bus;
 using ScavLib.event_bus.events;
-using ScavLib.util;
 
 namespace ScavButt;
 
@@ -11,14 +10,13 @@ namespace ScavButt;
 [BepInDependency("com.kanisuko.scavlib", BepInDependency.DependencyFlags.SoftDependency)]
 public class Plugin : BaseUnityPlugin
 {
-    public const string PluginGuid = "com.scavbutt.scavbutt";
-    public const string PluginName = "ScavButt";
+    public const string PluginGuid    = "com.scavbutt.scavbutt";
+    public const string PluginName    = "ScavButt";
     public const string PluginVersion = "0.1.0";
 
     internal static ManualLogSource Log = null!;
 
-    private bool _worldLoaded = false;
-    private float _lastShock = 0f;
+    private VibrationSystem? _vibrationSystem;
 
     private void Awake()
     {
@@ -36,27 +34,19 @@ public class Plugin : BaseUnityPlugin
     [Subscribe]
     private void OnWorldLoaded(WorldLoadedEvent e)
     {
-        _lastShock = PlayerUtil.GetShock();
-        _worldLoaded = true;
+        _vibrationSystem = gameObject.AddComponent<VibrationSystem>();
+        _vibrationSystem.StartPolling();
     }
 
     [Subscribe]
     private void OnWorldUnloading(WorldUnloadingEvent e)
     {
-        _worldLoaded = false;
         ButtplugManager.StopAll();
-    }
-
-    private void Update()
-    {
-        if (!_worldLoaded) return;
-
-        float shock = PlayerUtil.GetShock();
-        float delta = shock - _lastShock;
-        _lastShock = shock;
-
-        if (delta > 1f)
-            ButtplugManager.Vibrate(0.01, durationMs: 300);
+        if (_vibrationSystem != null)
+        {
+            Destroy(_vibrationSystem);
+            _vibrationSystem = null;
+        }
     }
 
     private void OnDestroy()

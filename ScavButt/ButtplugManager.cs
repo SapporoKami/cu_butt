@@ -158,7 +158,9 @@ internal static class ButtplugManager
         });
     }
 
-    internal static void Vibrate(double intensity, int durationMs = 200)
+    // durationMs = 0 → set intensity and leave it running (for continuous polling use)
+    // durationMs > 0 → set intensity, hold for durationMs, then stop (for one-shot use)
+    internal static void Vibrate(double intensity, int durationMs = 0)
     {
         if (!_client.Connected) return;
         intensity = Math.Max(0.0, Math.Min(1.0, intensity));
@@ -171,8 +173,11 @@ internal static class ButtplugManager
                 try
                 {
                     await device.VibrateAsync(intensity);
-                    await Task.Delay(durationMs);
-                    await device.Stop();
+                    if (durationMs > 0)
+                    {
+                        await Task.Delay(durationMs);
+                        await device.Stop();
+                    }
                 }
                 catch (Exception ex)
                 {
