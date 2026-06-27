@@ -1,6 +1,6 @@
 # ScavButtIO
 
-![Visualizer for wave synthesis feature](<Screenshot From 2026-06-27 01-49-54.png>)
+<img width="463" height="457" alt="Screenshot From 2026-06-27 01-49-54" src="https://github.com/user-attachments/assets/deabfce5-d912-4a37-9b6b-80df6c3f09d8" />
 
 BepInEx mod for [Casualties Unknown Demo](https://store.steampowered.com/app/2560010/Casualties_Unknown_Demo/) that makes compatible devices vibrate based on your in-game health state using the [buttplug.io](https://buttplug.io) protocol.
 
